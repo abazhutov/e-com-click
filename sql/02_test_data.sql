@@ -24,6 +24,10 @@ from generateRandom('
   1) g LIMIT 100000000;  
 
 --update for get merged data for query
-alter table products update updated = today() where product_id in 
-(select product_id from products p final join remainders r final using(product_id) 
-where r.date=today()-1 limit 10, 1000);
+alter table products
+  update updated = today() 
+  where product_id IN (
+    select r.product_id
+    from remainders r
+    where r.date = (today() - 1)
+  );
