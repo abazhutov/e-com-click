@@ -6,9 +6,15 @@ This project analyzes how different query structures (`JOIN`, `ON`, `IN`, `FINAL
 
 ---
 
-## Database Schema
+### Database Schema
 
 Two main tables emulate a simplified e-commerce dataset:
+
+`products` — product catalog with last update date
+
+`remainders` — stock, pricing, and product metrics by date
+
+![diagram products-remainders][diagram]
 
 ```sql
 CREATE TABLE products (
@@ -34,11 +40,7 @@ CREATE TABLE remainders (
 ORDER BY (date, product_id);
 ```
 
-`products` — product catalog with last update date
-
-`remainders` — stock, pricing, and product metrics by date
-
-[diagram products-remainders][diagram]
+### Change steps
 
 | Step | Change                          | Execution Time | Improvement Reason            |
 | ---- | ------------------------------- | -------------- | ----------------------------- |
@@ -56,6 +58,7 @@ Each step progressively reduced processing overhead, moving from 14 s to 0.2 s �
 - `DISTINCT` can safely replace `FINAL` in read-only analytical queries.
 - Filtering as early as possible drastically reduces scanned data volume.
 
+### Project structure
 | Path                            | Description                                  |
 | ------------------------------- | -------------------------------------------- |
 | `sql/01_schema.sql`             | Table definitions (`products`, `remainders`) |
@@ -66,8 +69,7 @@ Each step progressively reduced processing overhead, moving from 14 s to 0.2 s �
 | `docker/docker-compose.yml`     | Local ClickHouse setup                       |
 | `README.md`                     | Project overview and performance summary     |
 
-
-## How to Run Locally
+### How to Run Locally
 **1. Clone the repository**
 ```bash
 git clone https://github.com/abazhutov/e-com-click.git
@@ -78,25 +80,15 @@ cd e-com-click
 docker build -t e-com-click-img -f "docker/dockerfile" .
 docker run -d --name e-com-click-cnt --ulimit nofile=262144:262144 e-com-click-img
 ```
-**3. Connect to clickhouse-client in container**
-
+**3. Run optimized query**
 ```bash
-cat sql/03_solution.sql | docker exec -i e-com-click-cnt clickhouse-client
-
-docker exec -it e-com-click-cnt clickhouse-client
+docker exec -i e-com-click-cnt clickhouse-client < sql/03_solution.sql
 ```
-**4. Run optimized queries**
+**4. Get query stats**
 ```bash
-sudo docker exec -i e-com-click-cnt clickhouse-client < sql/03_solution.sql
+docker exec -it e-com-click-cnt clickhouse-client --query="SELECT result_rows ||' row in set. Duration: '||(query_duration_ms/1000)||' sec' as duration FROM system.query_log order by transaction_id desc limit 1;"
 ```
-**OR**
-```bash
-docker exec -it e-com-click-cnt clickhouse-client --query="$(cat sql/03_solution.sql)"
-**OR**
-```bash
-sudo docker exec -i e-com-click-cnt clickhouse-client < sql/03_solution.sql
-```
-## Result
+### Result
 
 **Final query execution time:** ~0.2 s
 
